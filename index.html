@@ -1,0 +1,569 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Library Management System</title>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#172554}
+button{border:0;padding:10px 15px;border-radius:7px;background:#2563eb;color:white;cursor:pointer}
+input,select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:7px;margin:7px 0}
+.auth{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#172554,#2563eb);padding:20px}
+.card{background:white;padding:30px;border-radius:15px;width:min(420px,100%)}
+a{color:#2563eb;cursor:pointer;font-weight:bold}
+#app{display:none}
+.sidebar{background:#172554;color:white;width:220px;position:fixed;top:0;bottom:0;padding:20px}
+.nav{display:block;width:100%;text-align:left;margin:7px 0;background:transparent;color:white}
+.nav.active,.nav:hover{background:#ffffff25}
+main{margin-left:220px;padding:25px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin:20px 0}
+.stat,.panel{background:white;padding:20px;border-radius:12px;box-shadow:0 3px 12px #0000000b}
+.stat strong{display:block;font-size:28px;margin-top:10px}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toolbar input{max-width:230px}
+table{width:100%;border-collapse:collapse;min-width:650px}
+th,td{text-align:left;padding:12px;border-bottom:1px solid #e2e8f0;font-size:13px}
+th{background:#f8fafc}
+.table-wrap{overflow-x:auto}
+td button{margin:2px;padding:7px}
+.secondary{background:#e0e7ff;color:#1d4ed8}
+.danger{background:#fee2e2;color:#b91c1c}
+.hidden{display:none!important}
+.message{color:#b91c1c;font-size:13px}
+.modal{display:none;position:fixed;inset:0;background:#0008;place-items:center;padding:15px}
+.modal-card{background:white;padding:25px;border-radius:12px;width:min(500px,100%)}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px}
+@media(max-width:750px){
+.sidebar{position:static;width:100%;display:flex;overflow-x:auto;align-items:center;padding:10px}
+.sidebar h2{font-size:17px;white-space:nowrap;margin:0 12px}
+.nav{width:auto;white-space:nowrap}
+main{margin:0;padding:15px}
+.stats{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+
+<body>
+
+<section class="auth" id="authScreen">
+<div class="card">
+<h1>📚 Library Management</h1>
+<p>Welcome to our library system</p>
+
+<div id="loginBox">
+<h2>Login</h2>
+<form id="loginForm">
+<input id="loginEmail" type="email" placeholder="Email address" required>
+<input id="loginPassword" type="password" placeholder="Password" required>
+<button type="submit">Login</button>
+</form>
+<p class="message" id="loginMessage"></p>
+<p>New user? <a id="showSignup">Sign Up</a></p>
+</div>
+
+<div id="signupBox" class="hidden">
+<h2>Create Account</h2>
+<form id="signupForm">
+<input id="signupName" placeholder="Full name" required>
+<input id="signupEmail" type="email" placeholder="Email address" required>
+<input id="signupPassword" type="password" placeholder="Password (8 characters minimum)" minlength="8" required>
+<button type="submit">Register</button>
+</form>
+<p class="message" id="signupMessage"></p>
+<p>Already registered? <a id="showLogin">Login</a></p>
+</div>
+</div>
+</section>
+
+<div id="app">
+
+<aside class="sidebar">
+<h2>📚 Library</h2>
+<button class="nav active" data-page="dashboard">Dashboard</button>
+<button class="nav" data-page="books">Books</button>
+<button class="nav" data-page="members">Members</button>
+<button class="nav" data-page="loans">Issue / Return</button>
+</aside>
+
+<main>
+<header>
+<h1 id="pageTitle">Dashboard</h1>
+<div><span id="userName"></span> <button class="secondary" id="logoutBtn">Logout</button></div>
+</header>
+
+<section id="dashboardPage">
+<div class="stats">
+<div class="stat">Total Books<strong id="statBooks">0</strong></div>
+<div class="stat">Members<strong id="statMembers">0</strong></div>
+<div class="stat">Issued Books<strong id="statIssued">0</strong></div>
+<div class="stat">Available Copies<strong id="statAvailable">0</strong></div>
+</div>
+<div class="panel">
+<h2>Welcome to Library Management System</h2>
+<p>Manage books, members and transactions from one website.</p>
+</div>
+</section>
+
+<section id="booksPage" class="hidden">
+<div class="panel">
+<div class="toolbar">
+<h2>Books</h2>
+<input id="bookSearch" placeholder="Search books">
+<button id="addBookBtn">Add Book</button>
+</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Title</th><th>Author</th><th>ISBN</th><th>Category</th><th>Total</th><th>Available</th><th>Actions</th></tr></thead>
+<tbody id="booksTable"></tbody>
+</table>
+</div>
+</div>
+</section>
+
+<section id="membersPage" class="hidden">
+<div class="panel">
+<div class="toolbar">
+<h2>Members</h2>
+<input id="memberSearch" placeholder="Search members">
+<button id="addMemberBtn">Add Member</button>
+</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th>Actions</th></tr></thead>
+<tbody id="membersTable"></tbody>
+</table>
+</div>
+</div>
+</section>
+
+<section id="loansPage" class="hidden">
+<div class="panel">
+<div class="toolbar">
+<h2>Issue / Return Books</h2>
+<button id="issueBookBtn">Issue Book</button>
+</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Book</th><th>Member</th><th>Issue Date</th><th>Due Date</th><th>Return Date</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="loansTable"></tbody>
+</table>
+</div>
+</div>
+</section>
+</main>
+</div>
+
+<div class="modal" id="modal">
+<div class="modal-card">
+<h2 id="modalTitle">Add Record</h2>
+<form id="modalForm">
+<div id="modalFields"></div>
+<p class="message" id="modalMessage"></p>
+<div class="modal-actions">
+<button type="button" class="secondary" id="cancelModal">Cancel</button>
+<button type="submit">Save</button>
+</div>
+</form>
+</div>
+</div>
+
+<script>
+// LOCAL DATABASE
+const getDB = (key) => JSON.parse(localStorage.getItem(key) || "[]");
+const saveDB = (key, data) => localStorage.setItem(key, JSON.stringify(data));
+
+let users = getDB("libraryUsers");
+let books = getDB("libraryBooks");
+let members = getDB("libraryMembers");
+let loans = getDB("libraryLoans");
+let currentUser = JSON.parse(sessionStorage.getItem("libraryUser") || "null");
+let modalConfig = null;
+
+const $ = s => document.querySelector(s);
+
+function esc(value) {
+ return String(value ?? "").replace(/[&<>"']/g, c => ({
+ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ })[c]);
+}
+
+function showAuth(signup=false) {
+ $("#authScreen").style.display="grid";
+ $("#app").style.display="none";
+ $("#loginBox").classList.toggle("hidden",signup);
+ $("#signupBox").classList.toggle("hidden",!signup);
+}
+
+function showApp() {
+ $("#authScreen").style.display="none";
+ $("#app").style.display="block";
+ $("#userName").textContent=currentUser.name;
+ loadDashboard();
+}
+
+$("#showSignup").onclick=()=>showAuth(true);
+$("#showLogin").onclick=()=>showAuth(false);
+
+// SIGNUP
+$("#signupForm").onsubmit=e=>{
+ e.preventDefault();
+
+ const name=$("#signupName").value.trim();
+ const email=$("#signupEmail").value.trim().toLowerCase();
+ const password=$("#signupPassword").value;
+
+ if(password.length<8){
+  $("#signupMessage").textContent="Password must have at least 8 characters";
+  return;
+ }
+
+ if(users.some(u=>u.email===email)){
+  $("#signupMessage").textContent="Email already registered";
+  return;
+ }
+
+ users.push({id:Date.now(),name,email,password});
+ saveDB("libraryUsers",users);
+
+ currentUser={name,email};
+ sessionStorage.setItem("libraryUser",JSON.stringify(currentUser));
+
+ e.target.reset();
+ showApp();
+};
+
+// LOGIN
+$("#loginForm").onsubmit=e=>{
+ e.preventDefault();
+
+ const email=$("#loginEmail").value.trim().toLowerCase();
+ const password=$("#loginPassword").value;
+
+ const user=users.find(u=>u.email===email && u.password===password);
+
+ if(!user){
+  $("#loginMessage").textContent="Invalid email or password";
+  return;
+ }
+
+ currentUser={name:user.name,email:user.email};
+ sessionStorage.setItem("libraryUser",JSON.stringify(currentUser));
+
+ e.target.reset();
+ showApp();
+};
+
+// LOGOUT
+$("#logoutBtn").onclick=()=>{
+ currentUser=null;
+ sessionStorage.removeItem("libraryUser");
+ showAuth(false);
+};
+
+// NAVIGATION
+document.querySelectorAll(".nav").forEach(btn=>{
+ btn.onclick=()=>{
+  document.querySelectorAll(".nav").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+
+  const page=btn.dataset.page;
+
+  ["dashboard","books","members","loans"].forEach(p=>{
+   $("#"+p+"Page").classList.toggle("hidden",p!==page);
+  });
+
+  $("#pageTitle").textContent=page==="loans"?"Issue / Return":page[0].toUpperCase()+page.slice(1);
+
+  if(page==="dashboard")loadDashboard();
+  if(page==="books")loadBooks();
+  if(page==="members")loadMembers();
+  if(page==="loans")loadLoans();
+ };
+});
+
+// DASHBOARD
+function loadDashboard(){
+ $("#statBooks").textContent=books.reduce((n,b)=>n+b.total,0);
+ $("#statMembers").textContent=members.length;
+ $("#statIssued").textContent=loans.filter(l=>l.status==="Issued").length;
+ $("#statAvailable").textContent=books.reduce((n,b)=>n+b.available,0);
+}
+
+// BOOKS
+function loadBooks(){
+ const q=$("#bookSearch").value.toLowerCase();
+
+ $("#booksTable").innerHTML=books.filter(b=>
+  [b.title,b.author,b.isbn,b.category].join(" ").toLowerCase().includes(q)
+ ).map(b=>`
+ <tr>
+ <td>${esc(b.title)}</td><td>${esc(b.author)}</td>
+ <td>${esc(b.isbn)}</td><td>${esc(b.category)}</td>
+ <td>${b.total}</td><td>${b.available}</td>
+ <td>
+ <button class="secondary" data-edit-book="${b.id}">Edit</button>
+ <button class="danger" data-delete-book="${b.id}">Delete</button>
+ </td>
+ </tr>`).join("");
+}
+
+// MEMBERS
+function loadMembers(){
+ const q=$("#memberSearch").value.toLowerCase();
+
+ $("#membersTable").innerHTML=members.filter(m=>
+  [m.name,m.email,m.phone,m.address].join(" ").toLowerCase().includes(q)
+ ).map(m=>`
+ <tr>
+ <td>${esc(m.name)}</td><td>${esc(m.email)}</td>
+ <td>${esc(m.phone)}</td><td>${esc(m.address)}</td>
+ <td>
+ <button class="secondary" data-edit-member="${m.id}">Edit</button>
+ <button class="danger" data-delete-member="${m.id}">Delete</button>
+ </td>
+ </tr>`).join("");
+}
+
+// LOANS
+function loadLoans(){
+ $("#loansTable").innerHTML=loans.map(l=>{
+  const book=books.find(b=>b.id===l.bookId);
+  const member=members.find(m=>m.id===l.memberId);
+
+  return `<tr>
+  <td>${esc(book?.title||"Deleted book")}</td>
+  <td>${esc(member?.name||"Deleted member")}</td>
+  <td>${l.issueDate}</td><td>${l.dueDate}</td>
+  <td>${l.returnDate||"-"}</td><td>${l.status}</td>
+  <td>${l.status==="Issued"?`<button data-return="${l.id}">Return</button>`:"-"}</td>
+  </tr>`;
+ }).join("");
+}
+
+// MODAL HELPERS
+function field(label,name,value="",type="text",required=false){
+ return `<label>${label}</label><input name="${name}" type="${type}" value="${esc(value)}" ${required?"required":""}>`;
+}
+
+function openModal(title,html,config){
+ modalConfig=config;
+ $("#modalTitle").textContent=title;
+ $("#modalFields").innerHTML=html;
+ $("#modalMessage").textContent="";
+ $("#modal").style.display="grid";
+}
+
+function closeModal(){
+ $("#modal").style.display="none";
+ modalConfig=null;
+}
+
+$("#cancelModal").onclick=closeModal;
+
+// ADD BOOK
+$("#addBookBtn").onclick=()=>{
+ openModal("Add Book",
+ field("Title","title","","text",true)+
+ field("Author","author","","text",true)+
+ field("ISBN","isbn")+
+ field("Category","category")+
+ field("Total Copies","total","1","number",true),
+ {type:"book"}
+ );
+};
+
+// ADD MEMBER
+$("#addMemberBtn").onclick=()=>{
+ openModal("Add Member",
+ field("Name","name","","text",true)+
+ field("Email","email","","email")+
+ field("Phone","phone")+
+ field("Address","address"),
+ {type:"member"}
+ );
+};
+
+// ISSUE BOOK
+$("#issueBookBtn").onclick=()=>{
+ const available=books.filter(b=>b.available>0);
+
+ if(!available.length||!members.length){
+  alert("Add an available book and a member first.");
+  return;
+ }
+
+ const bookOptions=available.map(b=>
+  `<option value="${b.id}">${esc(b.title)}</option>`
+ ).join("");
+
+ const memberOptions=members.map(m=>
+  `<option value="${m.id}">${esc(m.name)}</option>`
+ ).join("");
+
+ openModal("Issue Book",`
+ <label>Book</label><select name="bookId">${bookOptions}</select>
+ <label>Member</label><select name="memberId">${memberOptions}</select>
+ <p>Loan period: 14 days</p>`,
+ {type:"loan"});
+};
+
+// SAVE FORM
+$("#modalForm").onsubmit=e=>{
+ e.preventDefault();
+
+ const data=Object.fromEntries(new FormData(e.target).entries());
+
+ if(modalConfig.type==="book"){
+  const total=Number(data.total);
+
+  if(!Number.isInteger(total)||total<0){
+   $("#modalMessage").textContent="Enter a valid number of copies";
+   return;
+  }
+
+  if(modalConfig.id){
+   const b=books.find(x=>x.id===modalConfig.id);
+   const issued=b.total-b.available;
+
+   if(total<issued){
+    $("#modalMessage").textContent="Total copies cannot be less than issued copies";
+    return;
+   }
+
+   Object.assign(b,data,{total,available:total-issued});
+  }else{
+   books.push({...data,id:Date.now(),total,available:total});
+  }
+
+  saveDB("libraryBooks",books);
+  loadBooks();
+ }
+
+ if(modalConfig.type==="member"){
+  if(modalConfig.id){
+   Object.assign(members.find(m=>m.id===modalConfig.id),data);
+  }else{
+   members.push({...data,id:Date.now()});
+  }
+
+  saveDB("libraryMembers",members);
+  loadMembers();
+ }
+
+ if(modalConfig.type==="loan"){
+  const book=books.find(b=>b.id===Number(data.bookId));
+  if(!book||book.available<1){
+   $("#modalMessage").textContent="No available copies";
+   return;
+  }
+
+  const today=new Date();
+  const due=new Date(today);
+  due.setDate(due.getDate()+14);
+
+  book.available--;
+
+  loans.push({
+   id:Date.now(),
+   bookId:book.id,
+   memberId:Number(data.memberId),
+   issueDate:today.toISOString().slice(0,10),
+   dueDate:due.toISOString().slice(0,10),
+   returnDate:"",
+   status:"Issued"
+  });
+
+  saveDB("libraryBooks",books);
+  saveDB("libraryLoans",loans);
+  loadLoans();
+ }
+
+ closeModal();
+ loadDashboard();
+};
+
+// EDIT, DELETE AND RETURN
+document.addEventListener("click",e=>{
+ const t=e.target;
+
+ if(t.dataset.editBook){
+  const b=books.find(x=>x.id===Number(t.dataset.editBook));
+
+  openModal("Edit Book",
+  field("Title","title",b.title,"text",true)+
+  field("Author","author",b.author,"text",true)+
+  field("ISBN","isbn",b.isbn)+
+  field("Category","category",b.category)+
+  field("Total Copies","total",b.total,"number",true),
+  {type:"book",id:b.id});
+ }
+
+ if(t.dataset.deleteBook){
+  const id=Number(t.dataset.deleteBook);
+  const active=loans.some(l=>l.bookId===id&&l.status==="Issued");
+
+  if(active)return alert("Return issued copies before deleting this book.");
+
+  if(confirm("Delete this book?")){
+   books=books.filter(b=>b.id!==id);
+   saveDB("libraryBooks",books);
+   loadBooks();loadDashboard();
+  }
+ }
+
+ if(t.dataset.editMember){
+  const m=members.find(x=>x.id===Number(t.dataset.editMember));
+
+  openModal("Edit Member",
+  field("Name","name",m.name,"text",true)+
+  field("Email","email",m.email,"email")+
+  field("Phone","phone",m.phone)+
+  field("Address","address",m.address),
+  {type:"member",id:m.id});
+ }
+
+ if(t.dataset.deleteMember){
+  const id=Number(t.dataset.deleteMember);
+  const active=loans.some(l=>l.memberId===id&&l.status==="Issued");
+
+  if(active)return alert("Member has books that have not been returned.");
+
+  if(confirm("Delete this member?")){
+   members=members.filter(m=>m.id!==id);
+   saveDB("libraryMembers",members);
+   loadMembers();loadDashboard();
+  }
+ }
+
+ if(t.dataset.return){
+  const loan=loans.find(l=>l.id===Number(t.dataset.return));
+
+  if(loan&&loan.status==="Issued"&&confirm("Confirm book return?")){
+   loan.status="Returned";
+   loan.returnDate=new Date().toISOString().slice(0,10);
+
+   const book=books.find(b=>b.id===loan.bookId);
+   if(book)book.available++;
+
+   saveDB("libraryLoans",loans);
+   saveDB("libraryBooks",books);
+   loadLoans();loadDashboard();
+  }
+ }
+});
+
+// SEARCH
+$("#bookSearch").oninput=loadBooks;
+$("#memberSearch").oninput=loadMembers;
+
+// START
+if(currentUser)showApp();
+else showAuth(false);
+</script>
+
+</body>
+</html>
